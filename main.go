@@ -12,6 +12,15 @@ type WebhookPayload struct {
 	NotificationUsername string `json:"NotificationUsername"`
 	UserId string `json:"UserId"`
 	ServerName string `json:"ServerName"`
+	NotificationType string `json:"NotificationType"`
+	ItemId string `json:"ItemId"`
+	ItemType string `json:"ItemType"`
+	SeriesName string `json:"SeriesName"`
+	SeasonNumber any `json:"SeasonNumber"`
+	SeasonNumber00 any `json:"SeasonNumber00"`
+	EpisodeNumber00 any `json:"EpisodeNumber00"`
+	Thumbnail string `json:"Thumbnail"`
+	AirTime string `json:"AirTime"`
 }
 
 func main() {
