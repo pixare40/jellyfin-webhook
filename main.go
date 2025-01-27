@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+
+	"github.com/IBM/sarama"
 )
 
 type WebhookPayload struct {
@@ -24,25 +26,58 @@ type WebhookPayload struct {
 }
 
 func main() {
-	// Create a new instance of the WebhookPayload struct
+	config := sarama.NewConfig()
+	config.Producer.Return.Successes = true
+	config.Producer.Return.Errors = true
+
+	producer, err := sarama.NewSyncProducer([]string{"localhost:9092"}, config)
+	if err != nil {
+		fmt.Println("Error creating Kafka producer: ", err)
+		return
+	}
+
+	defer producer.Close()
+
+	log.Println("Kafka producer created")
+
 	http.HandleFunc("/webhooks/jellyfin", func(w http.ResponseWriter, r *http.Request) {
 		payload := WebhookPayload{}
-		// Decode the JSON payload from the request body
-		err := json.NewDecoder(r.Body).Decode(&payload)
 
-		// log r.Body to see the payload
+		err := json.NewDecoder(r.Body).Decode(&payload)
 		if err != nil {
-			fmt.Println("Error decoding JSON payload: ", err)
+			log.Println("Error decoding webhook payload: ", err)
+			http.Error(w, "Failed to decode JSON", http.StatusBadRequest)
 			return
 		}
-		// Print the decoded payload
-		fmt.Printf("Received webhook payload: %+v\n", payload)
 
-		// Respond with a 200 status code
+		payloadJSON, err := json.Marshal(payload)
+
+		if err != nil {
+			log.Println("Error decoding webhook payload: ", err)
+			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+			return
+		}
+
+		msq := &sarama.ProducerMessage{
+			Topic: "jellyfin-notifications",
+			Value: sarama.StringEncoder(payloadJSON),
+		}
+
+		partition, offset, err := producer.SendMessage(msq)
+
+		if err != nil {
+			log.Println("Error sending message to Kafka: ", err)
+			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+
+			return
+		}
+
+		log.Printf("Message sent to partition %d at offset %d\n", partition, offset)
+
 		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("OK"))
 	})
 
-	// Start the server on port 9090
 	fmt.Println("Server listening on port 9090")
 	log.Fatal(http.ListenAndServe(":9090", nil))
 }
