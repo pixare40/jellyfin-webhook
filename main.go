@@ -53,7 +53,7 @@ func main() {
 		payloadJSON, err := json.Marshal(payload)
 
 		if err != nil {
-			log.Println("Error decoding webhook payload: ", err)
+			log.Println("Error Marshalling JSON ", err)
 			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 			return
 		}
